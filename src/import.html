@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send to SillyTavern</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgb(36, 36, 37);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: rgb(220, 220, 210);
+            text-align: center;
+        }
+
+        .url-container {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+            word-wrap: break-word;
+        }
+
+        .url-container span {
+            font-weight: bold;
+        }
+
+        .loading {
+            color: rgb(220, 220, 210);
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .loading .spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-top-color: rgb(221, 22, 22);
+            border-radius: 50%;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            padding: 10px;
+        }
+
+        button {
+            background-color: rgb(160, 21, 21);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 45px;
+        }
+
+        button:hover {
+            background-color: rgb(221, 22, 22);
+        }
+
+        button:hover:disabled {
+            background-color: rgb(160, 21, 21);
+            cursor: not-allowed;
+        }
+
+        .explanation {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: left;
+        }
+
+        .explanation h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .explanation p {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+<h1>Send to SillyTavern</h1>
+<div class="url-container">
+    <span>Source URL:</span>
+    <p id="source-url"></p>
+</div>
+
+<div class="explanation">
+    <p>This page is a tool that allows third-party websites or applications to send character data to your SillyTavern server.</p>
+    <p>When you click the "Import" button, the character data will be fetched from the third-party website and imported into your SillyTavern server.</p>
+</div>
+
+<button id="import-button">Import</button>
+<div class="loading">
+    <div class="spinner"></div>
+    <p>Importing character...</p>
+</div>
+
+<div id="message-container"></div>
+
+<div class="footer">
+    <a href="https://github.com/cyberes/SillyTavern-internet-import" target="_blank" style="color:rgb(160, 21, 21)">
+        https://github.com/cyberes/SillyTavern-internet-import
+    </a>
+</div>
+
+<script>
+    const loadingIndicator = document.querySelector('.loading');
+    const sourceUrlText = document.querySelector('#source-url');
+    const messageContainer = document.querySelector('#message-container');
+    const importButton = document.getElementById('import-button');
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // When the window finishes loading, execute the following function
+    window.addEventListener('load', function () {
+        // Check if the 'url' parameter is present
+        if (!urlParams.get('url')) {
+            displayMessage('No source URL provided.', 'error');
+            return;
+        }
+
+        // Set the source URL text to the value of the 'url' parameter
+        sourceUrlText.innerText = urlParams.get('url');
+    })
+
+    // Listen for the button click
+    importButton.addEventListener('click', async () => {
+        loadingIndicator.style.display = 'block';
+        try {
+            await sendToSillyTavern();
+        } catch (error) {
+            console.error(error);
+        }
+        loadingIndicator.style.display = 'none';
+        importButton.disabled = true;
+    });
+
+    // Function to send data to SillyTavern
+    async function sendToSillyTavern() {
+        if (!urlParams.get('url')) {
+            return;
+        }
+
+        // Fetch data from the provided URL using the '/api/plugins/internet-import/fetch' endpoint
+        const fetchResponse = await fetch('/api/plugins/internet-import/fetch?url=' + decodeURIComponent(decodeURIComponent(urlParams.get('url'))));
+
+        // Check if the fetch response is not successful
+        if (!fetchResponse.ok) {
+            displayMessage(await fetchResponse.text(), 'error');
+            return;
+        }
+
+        // Get the fetched data as a blob
+        const blob = await fetchResponse.blob();
+
+        // Check if the blob type is not 'image/png'
+        if (blob.type !== 'image/png') {
+            displayMessage(`Only PNG images are allowed. You gave ${blob.type}`, 'error');
+            return;
+        }
+
+        // Create a new FormData object to send the image data
+        const formData = new FormData();
+        formData.append('avatar', blob, 'card.png');
+        formData.append('file_type', 'png');
+
+        // Send a POST request to the '/api/characters/import' endpoint
+        const sendResponse = await fetch(`/api/characters/import`, {
+            method: 'POST',
+            body: formData,
+            headers: {},
+            mode: 'no-cors'
+        });
+
+        // Check if the send response is not successful
+        if (!sendResponse.ok) {
+            displayMessage(`Import failed: ${fetchResponse.status} - ${await fetchResponse.text()}`, 'error');
+        } else {
+            const response = await sendResponse.json();
+            if (response.file_name != null) {
+                // If the 'file_name' property is present, display a success message with the file name
+                displayMessage(`Imported Successfully! File name: ${response.file_name}`);
+            } else {
+                // If the 'file_name' property is not present, display an error message with the fetch response status and text
+                displayMessage(`Import failed: ${fetchResponse.status} - ${await fetchResponse.text()}`, 'error');
+            }
+        }
+    }
+
+    function displayMessage(message, type = 'info') {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message');
+        messageElement.innerText = message;
+        messageElement.style.backgroundColor = type === 'error' ? '#ffebee' : '#e8f5e9';
+        messageElement.style.color = type === 'error' ? '#b71c1c' : '#1b5e20';
+        messageContainer.appendChild(messageElement);
+    }
+</script>
+</body>
+</html>
