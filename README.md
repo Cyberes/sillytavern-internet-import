@@ -11,6 +11,11 @@ _A plugin to allow internet websites to send cards to your SillyTavern server._
 3. Open `config.yaml` and change `enableServerPlugins` to `true`
 4. Start SillyTavern. You should see `[Internet Import] Plugin loaded!` in the console if the plugin was loaded successfully
 
+To build `internet-import.js` yourself:
+1. `npm install`
+2. `npm run build`
+3. Output will be in the `dist/` directory
+
 ## Usage
 
 A bot hosting website should give a link to your SillyTavern server with the URL of the character card PNG filled out:
