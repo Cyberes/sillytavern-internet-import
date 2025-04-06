@@ -77,6 +77,7 @@
             right: 0;
             text-align: center;
             padding: 10px;
+            z-index: -99999999;
         }
 
         button {
@@ -154,14 +155,11 @@
 
     // When the window finishes loading, execute the following function
     window.addEventListener('load', function () {
-        // Check if the 'url' parameter is present
         if (!urlParams.get('url')) {
             displayMessage('No source URL provided.', 'error');
             return;
         }
-
-        // Set the source URL text to the value of the 'url' parameter
-        sourceUrlText.innerText = urlParams.get('url');
+        sourceUrlText.innerText = decodeURIComponent(decodeURIComponent(urlParams.get('url')));
     })
 
     // Listen for the button click
@@ -183,7 +181,7 @@
         }
 
         // Fetch data from the provided URL using the '/api/plugins/internet-import/fetch' endpoint
-        const fetchResponse = await fetch('/api/plugins/internet-import/fetch?url=' + decodeURIComponent(decodeURIComponent(urlParams.get('url'))));
+        const fetchResponse = await fetch('/api/plugins/internet-import/fetch?url=' + urlParams.get('url'));
 
         // Check if the fetch response is not successful
         if (!fetchResponse.ok) {
